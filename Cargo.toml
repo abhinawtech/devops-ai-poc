@@ -1,0 +1,26 @@
+[package]
+name = "ai-model-service"
+version = "0.1.0"
+edition = "2021"
+description = "Rust web service for AI model inference with clean architecture"
+authors = ["Your Name <your.email@example.com>"]
+
+[dependencies]
+axum = { version = "0.8", features = ["macros"] }
+tokio = { version = "1.45", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+prometheus = "0.13"
+ndarray = "0.16"
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+lazy_static = "1.4"
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+hyper = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"] }
