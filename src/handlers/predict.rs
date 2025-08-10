@@ -9,7 +9,7 @@ pub async fn predict(
     Json(request): Json<PredictionRequest>,
 ) -> Result<Json<PredictionResponse>, StatusCode> {
     tracing::info!(
-        feature_count = request.features.len(),xxf
+        feature_count = request.features.len(),xxff
         "Prediction request received"
     );
 
