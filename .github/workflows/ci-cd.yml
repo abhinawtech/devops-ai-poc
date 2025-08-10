@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  AWS_REGION: us-west-2            # <-- set your region
+  AWS_REGION: us-west-2
   ECR_REPOSITORY: ai-model-service
   EKS_CLUSTER_NAME_STAGING: ai-model-dev
   EKS_CLUSTER_NAME_PROD: ai-model-prod
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
-      id-token: write          # OIDC
+      id-token: write
       contents: read
     outputs:
       image-uri: ${{ steps.build.outputs.image-uri }}
@@ -93,7 +93,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Configure AWS credentials using keys
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -114,7 +113,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build & push (amd64 runner => image works with your amd64 nodes)
       - name: Build & Push
         id: build
         env:
@@ -130,7 +128,9 @@ jobs:
     name: Deploy to Staging
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: false  # Disabled: EKS cluster ai-model-dev not created yet
+    
+    if: false  # Temporarily disabled - EKS clusters need to be created first
+
     environment: staging
     permissions:
       id-token: write
@@ -151,7 +151,6 @@ jobs:
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME_STAGING --region $AWS_REGION
 
-      # Do NOT mutate YAML in repo; use set image
       - name: Rollout
         env:
           IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
@@ -166,7 +165,6 @@ jobs:
           EXTERNAL=$(kubectl -n $NAMESPACE get svc $DEPLOYMENT -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           echo "LB http://$EXTERNAL"
           curl -sf "http://$EXTERNAL/health"
-          # sample POST (adjust to your API)
           curl -sf -X POST "http://$EXTERNAL/predict" -H "Content-Type: application/json" \
             -d '{"features":[1,2,3,4,5,6,7,8,9,10]}'
           echo "✅ Staging smoke passed"
@@ -174,7 +172,8 @@ jobs:
   deploy-production:
     name: Deploy to Production
     needs: [ build-and-push, deploy-staging ]
-    if: false  # Disabled: EKS cluster ai-model-prod not created yet
+    if: false  # Temporarily disabled - EKS clusters need to be created first
+
     runs-on: ubuntu-latest
     environment: production
     permissions:
