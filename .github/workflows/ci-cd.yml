@@ -130,6 +130,7 @@ jobs:
     name: Deploy to Staging
     needs: build-and-push
     runs-on: ubuntu-latest
+    if: false  # Disabled: EKS cluster ai-model-dev not created yet
     environment: staging
     permissions:
       id-token: write
@@ -173,7 +174,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     needs: [ build-and-push, deploy-staging ]
-    if: github.ref == 'refs/heads/main'
+    if: false  # Disabled: EKS cluster ai-model-prod not created yet
     runs-on: ubuntu-latest
     environment: production
     permissions:
