@@ -45,7 +45,7 @@ mod integration_tests {
         let health_response: Value = serde_json::from_str(body_str).unwrap();
 
         assert_eq!(health_response["status"], "healthy");
-        assert_eq!(health_response["service"], "ai-model-service-production");
+        assert_eq!(health_response["service"], "ai-model-service-abhinaw");
         assert!(health_response["version"].is_string());
         assert!(health_response["timestamp"].is_string());
     }
