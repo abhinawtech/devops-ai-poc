@@ -25,11 +25,11 @@ pub struct LinearRegressionModel {
     bias: f64,
 }
 
- impl Default for LinearRegressionModel {
-     fn default() -> Self {
+impl Default for LinearRegressionModel {
+    fn default() -> Self {
         Self::new()
     }
- }
+}
 
 impl LinearRegressionModel {
     /// Create a new linear regression model with random weights
