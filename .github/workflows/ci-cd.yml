@@ -161,8 +161,7 @@ jobs:
             echo "✅ EKS cluster $EKS_CLUSTER_NAME_STAGING exists"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "❌ EKS cluster $EKS_CLUSTER_NAME_STAGING not found"
-            exit 1
+            echo "⚠️ EKS cluster $EKS_CLUSTER_NAME_STAGING not found - skipping deployment"
           fi
 
       - name: Update kubeconfig
@@ -170,6 +169,7 @@ jobs:
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME_STAGING --region $AWS_REGION
 
       - name: Rollout
+        if: steps.check-cluster.outputs.exists == 'true'
         env:
           IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
         run: |
@@ -178,6 +178,7 @@ jobs:
           kubectl -n $NAMESPACE get pods -o wide
 
       - name: Smoke tests
+        if: steps.check-cluster.outputs.exists == 'true'
         run: |
           sleep 20
           EXTERNAL=$(kubectl -n $NAMESPACE get svc $DEPLOYMENT -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -219,8 +220,7 @@ jobs:
             echo "✅ EKS cluster $EKS_CLUSTER_NAME_PROD exists"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "❌ EKS cluster $EKS_CLUSTER_NAME_PROD not found"
-            exit 1
+            echo "⚠️ EKS cluster $EKS_CLUSTER_NAME_PROD not found - skipping deployment"
           fi
 
       - name: Update kubeconfig
@@ -229,6 +229,7 @@ jobs:
 
       - name: Rollout
         id: deployment
+        if: steps.check-cluster.outputs.exists == 'true'
         env:
           IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
         run: |
