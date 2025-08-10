@@ -41,9 +41,9 @@ mod integration_tests {
             .await
             .unwrap();
         let body_str = std::str::from_utf8(&body).unwrap();
-        
+
         let health_response: Value = serde_json::from_str(body_str).unwrap();
-        
+
         assert_eq!(health_response["status"], "healthy");
         assert_eq!(health_response["service"], "ai-model-service");
         assert!(health_response["version"].is_string());
@@ -73,9 +73,9 @@ mod integration_tests {
             .await
             .unwrap();
         let body_str = std::str::from_utf8(&body).unwrap();
-        
+
         let prediction_response: Value = serde_json::from_str(body_str).unwrap();
-        
+
         assert!(prediction_response["prediction"].is_number());
         assert!(prediction_response["confidence"].is_number());
         assert_eq!(prediction_response["model_version"], "v1.0.0");
@@ -153,7 +153,7 @@ mod integration_tests {
         let response = app.oneshot(request).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        
+
         let content_type = response.headers().get("content-type").unwrap();
         assert!(content_type.to_str().unwrap().starts_with("text/plain"));
 
@@ -161,7 +161,7 @@ mod integration_tests {
             .await
             .unwrap();
         let body_str = std::str::from_utf8(&body).unwrap();
-        
+
         // Check that metrics response is not empty and contains essential metrics
         assert!(!body_str.is_empty());
         assert!(body_str.contains("service_uptime_seconds"));
@@ -212,7 +212,7 @@ mod integration_tests {
                 .await
                 .unwrap();
             let body_str = std::str::from_utf8(&body).unwrap();
-            
+
             let prediction_response: Value = serde_json::from_str(body_str).unwrap();
             assert!(prediction_response["prediction"].is_number());
             assert!(prediction_response["confidence"].is_number());

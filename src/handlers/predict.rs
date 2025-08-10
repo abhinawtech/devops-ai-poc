@@ -1,9 +1,9 @@
-use axum::{extract::Json, http::StatusCode};
-use crate::models::ml_model::{get_model, PredictionRequest, PredictionResponse};
 use crate::metrics::prometheus::record_ml_prediction;
+use crate::models::ml_model::{get_model, PredictionRequest, PredictionResponse};
+use axum::{extract::Json, http::StatusCode};
 
 /// Prediction endpoint
-/// 
+///
 /// Accepts a JSON payload with features and returns ML model prediction
 pub async fn predict(
     Json(request): Json<PredictionRequest>,
@@ -20,8 +20,12 @@ pub async fn predict(
     match model.predict(&request.features) {
         Ok(prediction_response) => {
             // Record successful prediction metrics
-            record_ml_prediction(&prediction_response.model_version, prediction_response.confidence, true);
-            
+            record_ml_prediction(
+                &prediction_response.model_version,
+                prediction_response.confidence,
+                true,
+            );
+
             tracing::info!(
                 prediction = %prediction_response.prediction,
                 confidence = %prediction_response.confidence,
@@ -32,7 +36,7 @@ pub async fn predict(
         Err(e) => {
             // Record failed prediction metrics
             record_ml_prediction("v1.0.0", 0.0, false);
-            
+
             tracing::error!(
                 error = %e,
                 "Prediction failed"

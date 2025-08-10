@@ -1,2 +1,2 @@
-pub mod prometheus;
 pub mod middleware;
+pub mod prometheus;

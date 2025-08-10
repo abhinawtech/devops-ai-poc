@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod unit_tests {
-    use ai_model_service::models::ml_model::{LinearRegressionModel, PredictionRequest};
     use ai_model_service::handlers::health::HealthResponse;
+    use ai_model_service::models::ml_model::{LinearRegressionModel, PredictionRequest};
     use serde_json;
 
     #[test]
@@ -16,21 +16,21 @@ mod unit_tests {
     fn test_prediction_with_valid_input() {
         let model = LinearRegressionModel::new();
         let features = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-        
+
         let result = model.predict(&features);
         assert!(result.is_ok());
-        
+
         let response = result.unwrap();
         assert!(response.confidence >= 0.85 && response.confidence <= 1.0);
         assert_eq!(response.model_version, "v1.0.0");
         assert!(response.prediction.is_finite());
     }
 
-    #[test] 
+    #[test]
     fn test_prediction_with_invalid_feature_count() {
         let model = LinearRegressionModel::new();
         let features = vec![1.0, 2.0, 3.0]; // Only 3 features instead of 10
-        
+
         let result = model.predict(&features);
         assert!(result.is_err());
     }
@@ -40,7 +40,7 @@ mod unit_tests {
         let model = LinearRegressionModel::new();
         let mut features = vec![1.0; 10];
         features[0] = f64::INFINITY;
-        
+
         let result = model.predict(&features);
         assert!(result.is_err());
     }
@@ -50,7 +50,7 @@ mod unit_tests {
         let model = LinearRegressionModel::new();
         let mut features = vec![1.0; 10];
         features[5] = f64::NAN;
-        
+
         let result = model.predict(&features);
         assert!(result.is_err());
     }
@@ -59,7 +59,7 @@ mod unit_tests {
     fn test_prediction_request_deserialization() {
         let json = r#"{"features": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]}"#;
         let request: Result<PredictionRequest, _> = serde_json::from_str(json);
-        
+
         assert!(request.is_ok());
         let req = request.unwrap();
         assert_eq!(req.features.len(), 10);
@@ -70,7 +70,7 @@ mod unit_tests {
         let model = LinearRegressionModel::new();
         let test_cases = vec![
             vec![0.0; 10],
-            vec![1.0; 10], 
+            vec![1.0; 10],
             vec![-1.0; 10],
             vec![10.0; 10],
             vec![-10.0; 10],
@@ -92,10 +92,10 @@ mod unit_tests {
     fn test_prediction_deterministic() {
         let model = LinearRegressionModel::new();
         let features = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-        
+
         let result1 = model.predict(&features).unwrap();
         let result2 = model.predict(&features).unwrap();
-        
+
         assert_eq!(result1.prediction, result2.prediction);
         assert_eq!(result1.confidence, result2.confidence);
         assert_eq!(result1.model_version, result2.model_version);
@@ -106,7 +106,7 @@ mod unit_tests {
         let model = LinearRegressionModel::new();
         let features = vec![1.0; 10];
         let result = model.predict(&features).unwrap();
-        
+
         assert_eq!(result.model_version, "v1.0.0");
     }
 
