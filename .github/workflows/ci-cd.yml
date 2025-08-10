@@ -1,0 +1,210 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-west-2            # <-- set your region
+  ECR_REPOSITORY: ai-model-service
+  EKS_CLUSTER_NAME_STAGING: ai-model-dev
+  EKS_CLUSTER_NAME_PROD: ai-model-prod
+  NAMESPACE: ai-model-service
+  DEPLOYMENT: ai-model-service
+  CONTAINER: ai-model-service
+
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo test --verbose
+
+      - name: Build (release)
+        run: cargo build --release
+
+  security-scan:
+    name: Security Scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results.sarif
+
+  build-and-push:
+    name: Build & Push Image
+    needs: [ test, security-scan ]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write          # OIDC
+      contents: read
+    outputs:
+      image-uri: ${{ steps.build.outputs.image-uri }}
+      image-tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Prefer OIDC (no long-lived keys). If you can't use OIDC yet, set AWS keys in repo secrets
+      - name: Configure AWS credentials (OIDC)
+        if: ${{ !secrets.AWS_ACCESS_KEY_ID }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}   # e.g., arn:aws:iam::<acct>:role/GitHubActionsOIDC
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure AWS credentials (keys fallback)
+        if: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure ECR repo exists
+        run: |
+          aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $AWS_REGION >/dev/null 2>&1 \
+          || aws ecr create-repository --repository-name $ECR_REPOSITORY --region $AWS_REGION
+
+      - name: Set image metadata (tag = short SHA)
+        id: meta
+        run: echo "version=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build & push (amd64 runner => image works with your amd64 nodes)
+      - name: Build & Push
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          TAG: ${{ steps.meta.outputs.version }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "image-uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC or keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME_STAGING --region $AWS_REGION
+
+      # Do NOT mutate YAML in repo; use set image
+      - name: Rollout
+        env:
+          IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
+        run: |
+          kubectl -n $NAMESPACE set image deploy/$DEPLOYMENT $CONTAINER=$IMAGE_URI
+          kubectl -n $NAMESPACE rollout status deploy/$DEPLOYMENT --timeout=300s
+          kubectl -n $NAMESPACE get pods -o wide
+
+      - name: Smoke tests
+        run: |
+          sleep 20
+          EXTERNAL=$(kubectl -n $NAMESPACE get svc $DEPLOYMENT -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "LB http://$EXTERNAL"
+          curl -sf "http://$EXTERNAL/health"
+          # sample POST (adjust to your API)
+          curl -sf -X POST "http://$EXTERNAL/predict" -H "Content-Type: application/json" \
+            -d '{"features":[1,2,3,4,5,6,7,8,9,10]}'
+          echo "✅ Staging smoke passed"
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [ build-and-push, deploy-staging ]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC or keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME_PROD --region $AWS_REGION
+
+      - name: Rollout
+        env:
+          IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
+        run: |
+          kubectl -n $NAMESPACE set image deploy/$DEPLOYMENT $CONTAINER=$IMAGE_URI
+          kubectl -n $NAMESPACE rollout status deploy/$DEPLOYMENT --timeout=600s
+          echo "🚀 Production deployment complete"
