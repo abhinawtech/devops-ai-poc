@@ -89,16 +89,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Prefer OIDC (no long-lived keys). If you can't use OIDC yet, set AWS keys in repo secrets
-      - name: Configure AWS credentials (OIDC)
-        if: ${{ !secrets.AWS_ACCESS_KEY_ID }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}   # e.g., arn:aws:iam::<acct>:role/GitHubActionsOIDC
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Configure AWS credentials (keys fallback)
-        if: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      # Configure AWS credentials using keys
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -141,13 +133,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS (OIDC or keys)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
@@ -187,13 +178,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS (OIDC or keys)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
