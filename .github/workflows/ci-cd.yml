@@ -153,7 +153,20 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
+      - name: Check if EKS cluster exists
+        id: check-cluster
+        run: |
+          if aws eks describe-cluster --name $EKS_CLUSTER_NAME_STAGING --region $AWS_REGION >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "✅ EKS cluster $EKS_CLUSTER_NAME_STAGING exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "❌ EKS cluster $EKS_CLUSTER_NAME_STAGING not found"
+            exit 1
+          fi
+
       - name: Update kubeconfig
+        if: steps.check-cluster.outputs.exists == 'true'
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME_STAGING --region $AWS_REGION
 
       - name: Rollout
@@ -198,7 +211,20 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
+      - name: Check if EKS cluster exists
+        id: check-cluster
+        run: |
+          if aws eks describe-cluster --name $EKS_CLUSTER_NAME_PROD --region $AWS_REGION >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "✅ EKS cluster $EKS_CLUSTER_NAME_PROD exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "❌ EKS cluster $EKS_CLUSTER_NAME_PROD not found"
+            exit 1
+          fi
+
       - name: Update kubeconfig
+        if: steps.check-cluster.outputs.exists == 'true'
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME_PROD --region $AWS_REGION
 
       - name: Rollout
