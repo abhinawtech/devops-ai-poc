@@ -13,7 +13,7 @@ pub async fn predict(
         "Prediction request received"
     );
 
-    // Get the global model instance
+    // Get the global model instance dcxdcd
     let model = get_model();
 
     // Perform prediction
