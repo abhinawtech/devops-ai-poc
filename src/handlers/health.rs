@@ -16,7 +16,7 @@ pub struct HealthResponse {
 pub async fn health_check() -> Result<Json<HealthResponse>, StatusCode> {
     let health_response = HealthResponse {
         status: "healthy".to_string(),
-        service: "ai-model-service".to_string(),
+        service: "ai-model-service-v2".to_string(), // Updated for CI/CD test
         version: env!("CARGO_PKG_VERSION").to_string(),
         timestamp: Utc::now(),
     };
