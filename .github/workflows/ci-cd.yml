@@ -128,7 +128,9 @@ jobs:
     name: Deploy to Staging
     needs: build-and-push
     runs-on: ubuntu-latest
+    
     if: false  # Temporarily disabled - EKS clusters need to be created first
+
     environment: staging
     permissions:
       id-token: write
@@ -171,6 +173,7 @@ jobs:
     name: Deploy to Production
     needs: [ build-and-push, deploy-staging ]
     if: false  # Temporarily disabled - EKS clusters need to be created first
+
     runs-on: ubuntu-latest
     environment: production
     permissions:
