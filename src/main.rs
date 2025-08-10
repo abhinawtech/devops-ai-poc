@@ -8,8 +8,8 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod handlers;
-mod models;
 mod metrics;
+mod models;
 
 use handlers::{health, predict};
 use metrics::prometheus::setup_metrics_recorder;
@@ -43,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
     // Start the server
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     tracing::info!("🚀 AI Model Service starting on http://0.0.0.0:3000");
-    
+
     axum::serve(listener, app).await?;
 
     Ok(())

@@ -11,7 +11,7 @@ pub struct HealthResponse {
 }
 
 /// Health check endpoint
-/// 
+///
 /// Returns service status, version, and current timestamp
 pub async fn health_check() -> Result<Json<HealthResponse>, StatusCode> {
     let health_response = HealthResponse {

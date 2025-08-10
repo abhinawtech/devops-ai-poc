@@ -1,8 +1,8 @@
 use axum::{http::StatusCode, response::Response};
 use lazy_static::lazy_static;
 use prometheus::{
-    register_counter_vec, register_histogram_vec, register_gauge, CounterVec, Encoder,
-    Gauge, HistogramVec, TextEncoder,
+    register_counter_vec, register_gauge, register_histogram_vec, CounterVec, Encoder, Gauge,
+    HistogramVec, TextEncoder,
 };
 
 lazy_static! {
@@ -59,13 +59,13 @@ lazy_static! {
 pub fn setup_metrics_recorder() -> anyhow::Result<()> {
     // Initialize service start time
     SERVICE_UPTIME_SECONDS.set(0.0);
-    
+
     // Initialize active connections counter
     set_active_connections(0.0);
-    
+
     // Start uptime tracking in background
     tokio::spawn(update_uptime_metrics());
-    
+
     tracing::info!("Prometheus metrics recorder initialized");
     Ok(())
 }
@@ -73,7 +73,7 @@ pub fn setup_metrics_recorder() -> anyhow::Result<()> {
 /// Background task to update uptime metrics
 async fn update_uptime_metrics() {
     let start_time = std::time::Instant::now();
-    
+
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
     loop {
         interval.tick().await;
@@ -83,12 +83,12 @@ async fn update_uptime_metrics() {
 }
 
 /// Metrics endpoint handler
-/// 
+///
 /// Returns Prometheus-formatted metrics
 pub async fn metrics_handler() -> Result<Response<String>, StatusCode> {
     let encoder = TextEncoder::new();
     let metric_families = prometheus::gather();
-    
+
     match encoder.encode_to_string(&metric_families) {
         Ok(metrics_text) => {
             let response = Response::builder()
@@ -96,7 +96,7 @@ pub async fn metrics_handler() -> Result<Response<String>, StatusCode> {
                 .header("Content-Type", encoder.format_type())
                 .body(metrics_text)
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-                
+
             Ok(response)
         }
         Err(e) => {
@@ -109,11 +109,11 @@ pub async fn metrics_handler() -> Result<Response<String>, StatusCode> {
 /// Record HTTP request metrics
 pub fn record_http_request(method: &str, endpoint: &str, status: u16, duration: f64) {
     let status_str = status.to_string();
-    
+
     HTTP_REQUESTS_TOTAL
         .with_label_values(&[method, endpoint, &status_str])
         .inc();
-        
+
     HTTP_REQUEST_DURATION_SECONDS
         .with_label_values(&[method, endpoint])
         .observe(duration);
@@ -122,11 +122,11 @@ pub fn record_http_request(method: &str, endpoint: &str, status: u16, duration: 
 /// Record ML prediction metrics
 pub fn record_ml_prediction(model_version: &str, confidence: f64, success: bool) {
     let status = if success { "success" } else { "error" };
-    
+
     ML_PREDICTIONS_TOTAL
         .with_label_values(&[model_version, status])
         .inc();
-        
+
     if success {
         ML_PREDICTION_CONFIDENCE
             .with_label_values(&[model_version])
@@ -147,14 +147,18 @@ mod tests {
     fn test_record_http_request() {
         record_http_request("GET", "/health", 200, 0.001);
         // Verify metric was recorded (basic smoke test)
-        assert!(HTTP_REQUESTS_TOTAL.get_metric_with_label_values(&["GET", "/health", "200"]).is_ok());
+        assert!(HTTP_REQUESTS_TOTAL
+            .get_metric_with_label_values(&["GET", "/health", "200"])
+            .is_ok());
     }
 
-    #[test] 
+    #[test]
     fn test_record_ml_prediction() {
         record_ml_prediction("v1.0.0", 0.95, true);
         // Verify metric was recorded (basic smoke test)
-        assert!(ML_PREDICTIONS_TOTAL.get_metric_with_label_values(&["v1.0.0", "success"]).is_ok());
+        assert!(ML_PREDICTIONS_TOTAL
+            .get_metric_with_label_values(&["v1.0.0", "success"])
+            .is_ok());
     }
 
     #[test]

@@ -25,6 +25,12 @@ pub struct LinearRegressionModel {
     bias: f64,
 }
 
+impl Default for LinearRegressionModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LinearRegressionModel {
     /// Create a new linear regression model with random weights
     pub fn new() -> Self {
@@ -50,11 +56,7 @@ impl LinearRegressionModel {
         // Check for invalid values (NaN, infinite)
         for (i, &value) in features.iter().enumerate() {
             if !value.is_finite() {
-                return Err(anyhow!(
-                    "Invalid feature value at index {}: {}",
-                    i,
-                    value
-                ));
+                return Err(anyhow!("Invalid feature value at index {}: {}", i, value));
             }
         }
 
@@ -67,7 +69,7 @@ impl LinearRegressionModel {
         let distance_from_bias = (prediction - self.bias).abs();
         let max_distance = 50.0; // Reasonable max distance for normalization
         let normalized_distance = (distance_from_bias / max_distance).min(1.0);
-        
+
         // Confidence between 0.85 and 1.0
         0.85 + (1.0 - normalized_distance) * 0.15
     }
@@ -124,7 +126,7 @@ mod tests {
         let model = LinearRegressionModel::new();
         let features = vec![1.0; EXPECTED_FEATURES];
         let result = model.predict(&features);
-        
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert!(response.confidence >= 0.85 && response.confidence <= 1.0);
@@ -136,7 +138,7 @@ mod tests {
         let model = LinearRegressionModel::new();
         let features = vec![1.0; 5]; // Wrong number of features
         let result = model.predict(&features);
-        
+
         assert!(result.is_err());
     }
 
@@ -146,7 +148,7 @@ mod tests {
         let mut features = vec![1.0; EXPECTED_FEATURES];
         features[0] = f64::NAN;
         let result = model.predict(&features);
-        
+
         assert!(result.is_err());
     }
 
@@ -154,7 +156,7 @@ mod tests {
     fn test_global_model_instance() {
         let model1 = get_model();
         let model2 = get_model();
-        
+
         // Should be the same instance
         assert_eq!(std::ptr::addr_of!(*model1), std::ptr::addr_of!(*model2));
     }
