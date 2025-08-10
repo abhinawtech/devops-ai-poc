@@ -81,7 +81,7 @@ mod integration_tests {
         assert_eq!(prediction_response["model_version"], "v1.0.0");
 
         let confidence = prediction_response["confidence"].as_f64().unwrap();
-        assert!(confidence >= 0.85 && confidence <= 1.0);
+        assert!((0.85..=1.0).contains(&confidence));
     }
 
     #[tokio::test]

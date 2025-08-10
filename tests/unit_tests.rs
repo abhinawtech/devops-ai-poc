@@ -2,7 +2,6 @@
 mod unit_tests {
     use ai_model_service::handlers::health::HealthResponse;
     use ai_model_service::models::ml_model::{LinearRegressionModel, PredictionRequest};
-    use serde_json;
 
     #[test]
     fn test_linear_regression_model_creation() {
